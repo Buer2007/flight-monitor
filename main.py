@@ -27,13 +27,15 @@ from web.app import init_runtime, start_server_in_background
 def setup_logging(level: str = "INFO") -> None:
     """配置日志"""
     log_format = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+    log_dir = Path(__file__).parent / "data"
+    log_dir.mkdir(parents=True, exist_ok=True)
     logging.basicConfig(
         level=getattr(logging, level.upper(), logging.INFO),
         format=log_format,
         handlers=[
             logging.StreamHandler(sys.stdout),
             logging.FileHandler(
-                Path(__file__).parent / "data" / "monitor.log",
+                log_dir / "monitor.log",
                 encoding="utf-8",
             ),
         ],
