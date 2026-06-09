@@ -1,0 +1,30 @@
+# ============================================
+# 机票监控系统 - 配置文件
+# 复制此文件为 config.yaml 并填入真实值
+# ============================================
+
+# 飞书通知配置
+feishu:
+  webhook_url: "https://open.feishu.cn/open-apis/bot/v2/hook/YOUR_WEBHOOK_TOKEN"
+
+# 监控的航班列表
+# 不填航班号 = 监控该航线所有航班，任一满足条件即告警
+flights:
+  # 示例: 7月2日 上海→白山
+  - dep_city: "SHA"                # 上海虹桥
+    arr_city: "NBS"                # 长白山机场
+    date: "2026-07-02"
+    min_seats: 9
+    alert_on_price_change: true
+
+  - dep_city: "PVG"                # 上海浦东
+    arr_city: "NBS"
+    date: "2026-07-02"
+    min_seats: 9
+    alert_on_price_change: true
+
+# 轮询间隔（分钟）
+interval_minutes: 30
+
+# 日志级别: DEBUG, INFO, WARNING, ERROR
+log_level: "INFO"

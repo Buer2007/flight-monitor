@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>✈️ 机票监控面板</title>
+<style>
+  :root {
+    --bg: #f5f7fa;
+    --card: #ffffff;
+    --text: #2c3e50;
+    --muted: #7f8c8d;
+    --primary: #3498db;
+    --primary-hover: #2980b9;
+    --success: #27ae60;
+    --warning: #f39c12;
+    --danger: #e74c3c;
+    --border: #e1e8ed;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+  }
+  .header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 1.5rem 2rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  .header h1 { font-size: 1.5rem; }
+  .header .sub { opacity: 0.9; font-size: 0.9rem; margin-top: 0.25rem; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
+  .tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 2px solid var(--border); }
+  .tab {
+    padding: 0.75rem 1.25rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 0.95rem;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.2s;
+  }
+  .tab.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
+  .tab:hover { color: var(--primary); }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .card {
+    background: var(--card);
+    border-radius: 8px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .card-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+  .form-field { display: flex; flex-direction: column; }
+  .form-field label { font-size: 0.85rem; color: var(--muted); margin-bottom: 0.25rem; }
+  .form-field input, .form-field select {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.95rem;
+    background: white;
+    color: var(--text);
+  }
+  .form-field input:focus, .form-field select:focus {
+    outline: none;
+    border-color: var(--primary);
+  }
+  .btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+    background: var(--primary);
+    color: white;
+  }
+  .btn:hover { background: var(--primary-hover); }
+  .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+  .btn-danger { background: var(--danger); }
+  .btn-danger:hover { background: #c0392b; }
+  .btn-secondary { background: #95a5a6; }
+  .btn-secondary:hover { background: #7f8c8d; }
+  .btn-sm { padding: 0.3rem 0.6rem; font-size: 0.85rem; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+  th { background: #f8f9fa; font-weight: 600; color: var(--muted); }
+  .badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 500;
+  }
+  .badge-success { background: #d4edda; color: #155724; }
+  .badge-warning { background: #fff3cd; color: #856404; }
+  .badge-danger { background: #f8d7da; color: #721c24; }
+  .badge-info { background: #d1ecf1; color: #0c5460; }
+  .badge-muted { background: #e2e3e5; color: #6c757d; }
+  .empty { text-align: center; padding: 2rem; color: var(--muted); }
+  .toast {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    padding: 0.75rem 1.25rem;
+    border-radius: 6px;
+    color: white;
+    z-index: 1000;
+    animation: slideIn 0.2s;
+  }
+  .toast-success { background: var(--success); }
+  .toast-error { background: var(--danger); }
+  @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+  .airport-list {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    display: none;
+    position: absolute;
+    background: white;
+    z-index: 100;
+    width: 100%;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+  .airport-list.show { display: block; }
+  .airport-item {
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+  }
+  .airport-item:hover { background: #f8f9fa; }
+  .airport-item:last-child { border-bottom: none; }
+  .airport-code { font-weight: 600; color: var(--primary); margin-right: 0.5rem; }
+  .flight-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0.75rem; }
+  .flight-card {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.75rem;
+    background: white;
+  }
+  .flight-card .flight-no { font-weight: 600; font-size: 1rem; }
+  .flight-card .price { font-size: 1.4rem; color: var(--danger); font-weight: 700; margin: 0.25rem 0; }
+  .flight-card .meta { font-size: 0.85rem; color: var(--muted); }
+  .flight-card .seats-low { color: var(--warning); font-weight: 600; }
+  .spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid var(--primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .search-box { position: relative; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>✈️ 机票监控面板</h1>
+  <div class="sub">携程价格抓取 · 飞书告警 · Web 控制台</div>
+</div>
+
+<div class="container">
+  <div class="tabs">
+    <button class="tab active" data-tab="monitor">监控列表</button>
+    <button class="tab" data-tab="query">手动查询</button>
+    <button class="tab" data-tab="history">历史记录</button>
+    <button class="tab" data-tab="settings">系统设置</button>
+  </div>
+
+  <!-- ── 监控列表 ── -->
+  <div id="monitor" class="panel active">
+    <div class="card">
+      <div class="card-title">➕ 添加监控航班</div>
+      <div class="form-row">
+        <div class="form-field search-box">
+          <label>出发机场</label>
+          <input type="text" id="add-dep" placeholder="搜索城市或三字码" autocomplete="off">
+          <div class="airport-list" id="add-dep-list"></div>
+        </div>
+        <div class="form-field search-box">
+          <label>到达机场</label>
+          <input type="text" id="add-arr" placeholder="搜索城市或三字码" autocomplete="off">
+          <div class="airport-list" id="add-arr-list"></div>
+        </div>
+        <div class="form-field">
+          <label>出发日期</label>
+          <input type="date" id="add-date">
+        </div>
+        <div class="form-field">
+          <label>航班号（可选）</label>
+          <input type="text" id="add-flight-no" placeholder="留空监控整条航线">
+        </div>
+        <div class="form-field">
+          <label>余票阈值</label>
+          <input type="number" id="add-min-seats" value="9" min="0" max="500">
+        </div>
+        <div class="form-field" style="justify-content: flex-end;">
+          <button class="btn" id="add-btn">添加</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📋 当前监控 (<span id="flights-count">0</span>)</div>
+      <div id="flights-list">
+        <div class="empty">加载中...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 手动查询 ── -->
+  <div id="query" class="panel">
+    <div class="card">
+      <div class="card-title">🔍 手动查询航班</div>
+      <div class="form-row">
+        <div class="form-field search-box">
+          <label>出发机场</label>
+          <input type="text" id="q-dep" placeholder="SHA / 上海" autocomplete="off">
+          <div class="airport-list" id="q-dep-list"></div>
+        </div>
+        <div class="form-field search-box">
+          <label>到达机场</label>
+          <input type="text" id="q-arr" placeholder="PEK / 北京" autocomplete="off">
+          <div class="airport-list" id="q-arr-list"></div>
+        </div>
+        <div class="form-field">
+          <label>出发日期</label>
+          <input type="date" id="q-date">
+        </div>
+        <div class="form-field">
+          <label>航班号（可选）</label>
+          <input type="text" id="q-flight-no" placeholder="留空查询整条航线">
+        </div>
+        <div class="form-field" style="justify-content: flex-end;">
+          <button class="btn" id="query-btn">立即查询</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">✈️ 查询结果 (<span id="result-count">0</span>)</div>
+      <div id="query-result">
+        <div class="empty">填写查询条件后点击「立即查询」</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 历史记录 ── -->
+  <div id="history" class="panel">
+    <div class="card">
+      <div class="card-title">
+        📜 历史记录
+        <select id="history-type" style="margin-left: auto; padding: 0.3rem 0.6rem; border-radius: 4px; border: 1px solid var(--border);">
+          <option value="">全部</option>
+          <option value="check">查询</option>
+          <option value="alert">告警</option>
+          <option value="error">错误</option>
+        </select>
+        <button class="btn btn-sm btn-secondary" id="refresh-history">刷新</button>
+        <button class="btn btn-sm btn-danger" id="clear-history">清空</button>
+      </div>
+      <div id="history-list">
+        <div class="empty">加载中...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 设置 ── -->
+  <div id="settings" class="panel">
+    <div class="card">
+      <div class="card-title">⚙️ 系统设置</div>
+      <div id="settings-content">
+        <div class="empty">加载中...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = "";
+
+// ── Tabs ──
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById(t.dataset.tab).classList.add('active');
+    if (t.dataset.tab === 'history') loadHistory();
+    if (t.dataset.tab === 'settings') loadSettings();
+  });
+});
+
+// ── Toast ──
+function toast(msg, type = 'success') {
+  const t = document.createElement('div');
+  t.className = `toast toast-${type}`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2500);
+}
+
+// ── 机场自动补全 ──
+function setupAirportAutocomplete(inputId, listId) {
+  const input = document.getElementById(inputId);
+  const list = document.getElementById(listId);
+  let selectedCode = '';
+
+  async function search(q) {
+    const r = await fetch(`${API}/api/airports?q=${encodeURIComponent(q)}`);
+    const d = await r.json();
+    list.innerHTML = d.airports.slice(0, 20).map(a => `
+      <div class="airport-item" data-code="${a.code}">
+        <span class="airport-code">${a.code}</span>
+        ${a.city} · ${a.name}
+      </div>
+    `).join('') || '<div class="empty" style="padding:0.5rem">无匹配</div>';
+    list.classList.add('show');
+  }
+
+  input.addEventListener('input', e => {
+    const q = e.target.value.trim();
+    selectedCode = '';
+    if (q.length === 0) {
+      list.classList.remove('show');
+      return;
+    }
+    search(q);
+  });
+
+  input.addEventListener('focus', e => {
+    if (e.target.value.trim()) search(e.target.value.trim());
+  });
+
+  document.addEventListener('click', e => {
+    if (!input.contains(e.target) && !list.contains(e.target)) {
+      list.classList.remove('show');
+    }
+  });
+
+  list.addEventListener('click', e => {
+    const item = e.target.closest('.airport-item');
+    if (!item) return;
+    const code = item.dataset.code;
+    const text = item.textContent.trim();
+    input.value = text;
+    selectedCode = code;
+    input.dataset.code = code;
+    list.classList.remove('show');
+  });
+
+  return () => input.dataset.code || input.value.trim().toUpperCase();
+}
+
+const getAddDep = setupAirportAutocomplete('add-dep', 'add-dep-list');
+const getAddArr = setupAirportAutocomplete('add-arr', 'add-arr-list');
+const getQDep = setupAirportAutocomplete('q-dep', 'q-dep-list');
+const getQArr = setupAirportAutocomplete('q-arr', 'q-arr-list');
+
+// ── 监控列表 ──
+async function loadFlights() {
+  const r = await fetch(`${API}/api/config`);
+  const d = await r.json();
+  document.getElementById('flights-count').textContent = d.flights.length;
+  const list = document.getElementById('flights-list');
+
+  if (d.flights.length === 0) {
+    list.innerHTML = '<div class="empty">暂无监控航班，请添加</div>';
+    return;
+  }
+
+  list.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>出发</th>
+          <th>到达</th>
+          <th>日期</th>
+          <th>航班号</th>
+          <th>余票阈值</th>
+          <th>价格告警</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${d.flights.map((f, i) => `
+          <tr>
+            <td>${i + 1}</td>
+            <td><span class="badge badge-info">${f.dep_city}</span></td>
+            <td><span class="badge badge-info">${f.arr_city}</span></td>
+            <td>${f.date}</td>
+            <td>${f.flight_no || '<span class="badge badge-muted">全部</span>'}</td>
+            <td>${f.min_seats}</td>
+            <td>${f.alert_on_price_change ? '<span class="badge badge-success">开</span>' : '<span class="badge badge-muted">关</span>'}</td>
+            <td>
+              <button class="btn btn-sm btn-danger" onclick="deleteFlight(${i})">删除</button>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+window.deleteFlight = async (i) => {
+  if (!confirm('确定删除该监控？')) return;
+  const r = await fetch(`${API}/api/flights/${i}`, { method: 'DELETE' });
+  if (r.ok) { toast('已删除'); loadFlights(); }
+  else toast('删除失败', 'error');
+};
+
+document.getElementById('add-btn').addEventListener('click', async () => {
+  const dep = document.getElementById('add-dep').dataset.code || document.getElementById('add-dep').value.trim().toUpperCase();
+  const arr = document.getElementById('add-arr').dataset.code || document.getElementById('add-arr').value.trim().toUpperCase();
+  const date = document.getElementById('add-date').value;
+  const flight_no = document.getElementById('add-flight-no').value.trim().toUpperCase();
+  const min_seats = parseInt(document.getElementById('add-min-seats').value) || 9;
+
+  if (!dep || !arr || !date) { toast('请填写出发/到达/日期', 'error'); return; }
+  if (dep.length !== 3 || arr.length !== 3) { toast('机场代码应为3位字母', 'error'); return; }
+
+  const r = await fetch(`${API}/api/flights`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dep_city: dep, arr_city: arr, date, flight_no, min_seats, alert_on_price_change: true })
+  });
+  if (r.ok) { toast('添加成功'); loadFlights(); document.getElementById('add-flight-no').value = ''; }
+  else { const e = await r.json(); toast(e.detail || '添加失败', 'error'); }
+});
+
+// ── 手动查询 ──
+document.getElementById('query-btn').addEventListener('click', async () => {
+  const dep = document.getElementById('q-dep').dataset.code || document.getElementById('q-dep').value.trim().toUpperCase();
+  const arr = document.getElementById('q-arr').dataset.code || document.getElementById('q-arr').value.trim().toUpperCase();
+  const date = document.getElementById('q-date').value;
+  const flight_no = document.getElementById('q-flight-no').value.trim().toUpperCase();
+
+  if (!dep || !arr || !date) { toast('请填写出发/到达/日期', 'error'); return; }
+
+  const btn = document.getElementById('query-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> 查询中...';
+
+  try {
+    const r = await fetch(`${API}/api/query?dep_city=${dep}&arr_city=${arr}&date=${date}&flight_no=${flight_no}`, { method: 'POST' });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || '查询失败');
+
+    document.getElementById('result-count').textContent = d.count;
+    const result = document.getElementById('query-result');
+
+    if (d.count === 0) {
+      result.innerHTML = '<div class="empty">未查询到航班数据（可能风控，请检查 data/debug_*.png）</div>';
+      return;
+    }
+
+    result.innerHTML = `
+      <div class="flight-grid">
+        ${d.flights.map(f => {
+          const seats = f.seats_remaining;
+          const seatsClass = seats >= 0 && seats < 9 ? 'seats-low' : '';
+          const seatsBadge = seats >= 0
+            ? (seats < 9 ? `<span class="badge badge-warning">余 ${seats}</span>` : `<span class="badge badge-success">余 ${seats}</span>`)
+            : '<span class="badge badge-muted">余 未知</span>';
+          return `
+            <div class="flight-card">
+              <div class="flight-no">${f.flight_no || '?'} ${f.airline ? '· ' + f.airline : ''}</div>
+              <div class="meta">${f.dep_city} → ${f.arr_city} · ${f.date}</div>
+              <div class="meta">${f.dep_time || '??:??'} → ${f.arr_time || '??:??'}</div>
+              <div class="price">¥${f.price.toFixed(0)}</div>
+              ${seatsBadge}
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+    toast(`查询到 ${d.count} 个航班`);
+  } catch (e) {
+    toast(e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '立即查询';
+  }
+});
+
+// ── 历史记录 ──
+async function loadHistory() {
+  const type = document.getElementById('history-type').value;
+  const r = await fetch(`${API}/api/history?type=${type}&limit=200`);
+  const d = await r.json();
+  const list = document.getElementById('history-list');
+
+  if (d.records.length === 0) {
+    list.innerHTML = '<div class="empty">暂无历史记录</div>';
+    return;
+  }
+
+  list.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>时间</th>
+          <th>类型</th>
+          <th>来源</th>
+          <th>详情</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${d.records.map(rec => {
+          let detail = '';
+          let badge = 'badge-muted';
+          if (rec.type === 'check') {
+            badge = 'badge-info';
+            detail = `${rec.flight_count} 个航班`;
+          } else if (rec.type === 'alert') {
+            badge = 'badge-warning';
+            detail = `${rec.flight_no || ''} ${rec.alert_type || ''} ¥${rec.new_price || ''}`;
+          } else if (rec.type === 'error') {
+            badge = 'badge-danger';
+            detail = rec.error;
+          }
+          return `
+            <tr>
+              <td>${rec.timestamp.replace('T', ' ')}</td>
+              <td><span class="badge ${badge}">${rec.type}</span></td>
+              <td>${rec.source}</td>
+              <td>${detail}</td>
+            </tr>
+          `;
+        }).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+document.getElementById('refresh-history').addEventListener('click', loadHistory);
+document.getElementById('history-type').addEventListener('change', loadHistory);
+document.getElementById('clear-history').addEventListener('click', async () => {
+  if (!confirm('确定清空所有历史？')) return;
+  await fetch(`${API}/api/history`, { method: 'DELETE' });
+  toast('已清空');
+  loadHistory();
+});
+
+// ── 设置 ──
+async function loadSettings() {
+  const r = await fetch(`${API}/api/config`);
+  const d = await r.json();
+  document.getElementById('settings-content').innerHTML = `
+    <div class="form-row">
+      <div class="form-field">
+        <label>飞书 Webhook</label>
+        <input type="text" value="${d.feishu_webhook_masked}" readonly>
+      </div>
+      <div class="form-field">
+        <label>检查间隔 (分钟)</label>
+        <input type="number" value="${d.interval_minutes}" disabled>
+        <small style="color: var(--muted);">修改需编辑 config.yaml 后重启</small>
+      </div>
+      <div class="form-field">
+        <label>日志级别</label>
+        <input type="text" value="${d.log_level}" disabled>
+      </div>
+    </div>
+    <div class="card" style="margin-top: 1rem; background: #f8f9fa;">
+      <div class="card-title">💡 提示</div>
+      <ul style="padding-left: 1.5rem; color: var(--muted); font-size: 0.9rem; line-height: 1.8;">
+        <li>Web 面板运行在后台线程，主程序退出时一起退出</li>
+        <li>手动查询的航班不会自动加入监控列表</li>
+        <li>删除监控航班会同时清除其历史状态记录</li>
+        <li>历史记录最多保留 2000 条，自动滚动清理</li>
+      </ul>
+    </div>
+  `;
+}
+
+// ── 初始加载 ──
+loadFlights();
+
+// 设置默认日期为明天
+const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+document.getElementById('add-date').value = tomorrow;
+document.getElementById('q-date').value = tomorrow;
+</script>
+</body>
+</html>
