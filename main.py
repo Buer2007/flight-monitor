@@ -6,6 +6,7 @@
 
 import asyncio
 import logging
+import os
 import signal
 import sys
 from datetime import datetime
@@ -173,8 +174,10 @@ async def main() -> None:
     scheduler = FlightScheduler(interval_minutes=config["interval_minutes"])
 
     # 注入 Web 面板运行时并启动后台服务
+    web_host = os.environ.get("HOST", "0.0.0.0")
+    web_port = int(os.environ.get("PORT", "8765"))
     init_runtime(client=client, checker=checker, notifier=notifier, state=store, history=history)
-    start_server_in_background(host="127.0.0.1", port=8765)
+    start_server_in_background(host=web_host, port=web_port)
 
     # 优雅退出处理
     shutdown_event = asyncio.Event()
